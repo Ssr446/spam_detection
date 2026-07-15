@@ -1,5 +1,7 @@
 # SpamGuard AI - Spam Detection System
 
+**Live Demo:** [https://spam-detection-1dzb.onrender.com/](https://spam-detection-1dzb.onrender.com/)
+
 A multi-platform Spam Detection System with an ML backend (Flask, Scikit-learn, NLTK) and a modern, beautiful frontend (React, Vite). It classifies messages as 'spam' or 'ham' across SMS, Email, and Call Transcripts.
 
 ## Features
