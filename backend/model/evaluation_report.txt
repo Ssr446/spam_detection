@@ -1,0 +1,20 @@
+Model Evaluation Report
+========================
+
+Accuracy:  0.7500
+Precision: 1.0000
+Recall:    0.5000
+
+Confusion Matrix:
+[[2 0]
+ [1 1]]
+
+Classification Report:
+              precision    recall  f1-score   support
+
+         ham       0.67      1.00      0.80         2
+        spam       1.00      0.50      0.67         2
+
+    accuracy                           0.75         4
+   macro avg       0.83      0.75      0.73         4
+weighted avg       0.83      0.75      0.73         4
