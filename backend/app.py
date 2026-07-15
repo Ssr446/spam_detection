@@ -7,6 +7,7 @@ from datetime import datetime
 
 # Make sure to import ml_pipeline so unpickling works
 import ml_pipeline
+from train_model import train
 
 app = Flask(__name__, static_folder='static')
 CORS(app)
@@ -86,6 +87,7 @@ def classify():
 
 @app.route('/api/feedback', methods=['POST'])
 def feedback():
+    global model
     data = request.json
     item_id = data.get('id')
     correction = data.get('correction')
@@ -98,7 +100,20 @@ def feedback():
         c = conn.cursor()
         c.execute('UPDATE history SET user_correction = ? WHERE id = ?', (correction, item_id))
         conn.commit()
+        
+        # Fetch all corrected history to retrain the model
+        c.execute('SELECT text, user_correction FROM history WHERE user_correction IS NOT NULL')
+        corrections = c.fetchall()
         conn.close()
+        
+        if corrections:
+            extra_X = [row[0] for row in corrections]
+            extra_y = [row[1] for row in corrections]
+            # Retrain model and update in-memory instance immediately
+            print(f"Retraining model with {len(extra_X)} user corrections...")
+            model = train(extra_X, extra_y)
+            print("Model retrained successfully.")
+            
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'error': str(e)}), 500

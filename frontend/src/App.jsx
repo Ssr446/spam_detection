@@ -4,17 +4,30 @@ import { useState, useEffect } from 'react';
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 function App() {
-  const [activeTab, setActiveTab] = useState('classify'); // 'classify' or 'dashboard'
+  const [activeTab, setActiveTab] = useState('classify'); // 'classify', 'dashboard', 'history'
   
   // Classify State
   const [text, setText] = useState('');
   const [type, setType] = useState('sms');
   const [loading, setLoading] = useState(false);
+  const [analysisStage, setAnalysisStage] = useState('');
   const [result, setResult] = useState(null);
-  const [feedbackGiven, setFeedbackGiven] = useState(false);
+  
+  // Toast State
+  const [toast, setToast] = useState(null);
 
   // Dashboard State
   const [stats, setStats] = useState(null);
+  
+  // History State
+  const [history, setHistory] = useState([]);
+
+  const showToast = (message) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
   const handleClassify = async (e) => {
     e.preventDefault();
@@ -22,9 +35,15 @@ function App() {
     
     setLoading(true);
     setResult(null);
-    setFeedbackGiven(false);
+    setAnalysisStage('Extracting features...');
     
     try {
+      // Simulate dynamic loading steps for UX
+      await delay(600);
+      setAnalysisStage('Running Logistic Regression...');
+      await delay(600);
+      setAnalysisStage('Finalizing results...');
+      
       const res = await fetch(`${API_BASE}/api/classify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -42,6 +61,7 @@ function App() {
       alert("Error: " + err.message);
     } finally {
       setLoading(false);
+      setAnalysisStage('');
     }
   };
 
@@ -54,7 +74,8 @@ function App() {
         body: JSON.stringify({ id: result.id, correction })
       });
       if (res.ok) {
-        setFeedbackGiven(true);
+        setResult({...result, reported: true});
+        showToast("Feedback submitted! Model has been retrained instantly.");
       }
     } catch (err) {
       console.error(err);
@@ -71,14 +92,28 @@ function App() {
     }
   };
 
+  const fetchHistory = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/history?per_page=10`);
+      const data = await res.json();
+      setHistory(data.items);
+    } catch (err) {
+      console.error("Failed to fetch history", err);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'dashboard') {
       fetchStats();
+    } else if (activeTab === 'history') {
+      fetchHistory();
     }
   }, [activeTab]);
 
   return (
     <div className="app-container">
+      {toast && <div className="toast fade-in-out">{toast}</div>}
+      
       <header>
         <h1>SpamGuard AI</h1>
         <p>Advanced cross-channel spam detection</p>
@@ -97,10 +132,16 @@ function App() {
         >
           Dashboard
         </button>
+        <button 
+          className={`tab ${activeTab === 'history' ? 'active' : ''}`}
+          onClick={() => setActiveTab('history')}
+        >
+          History
+        </button>
       </div>
 
       {activeTab === 'classify' && (
-        <div className="glass-card">
+        <div className="glass-card fade-in">
           <form onSubmit={handleClassify}>
             <div className="form-group">
               <label>Message Channel</label>
@@ -121,12 +162,16 @@ function App() {
             </div>
             
             <button type="submit" disabled={loading || !text.trim()}>
-              {loading ? 'Analyzing...' : 'Analyze Message'}
+              {loading ? (
+                <div className="loading-state">
+                  <span className="spinner"></span> {analysisStage}
+                </div>
+              ) : 'Analyze Message'}
             </button>
           </form>
 
           {result && (
-            <div className="result-section">
+            <div className="result-section slide-up">
               <div className={`result-badge ${result.label.toLowerCase()}`}>
                 {result.label.toUpperCase()}
               </div>
@@ -144,19 +189,19 @@ function App() {
                 </div>
               </div>
 
-              {!feedbackGiven ? (
+              {!result.reported ? (
                 <div className="feedback-area">
                   <span>Is this wrong?</span>
                   <button 
                     className="btn-secondary"
                     onClick={() => handleFeedback(result.label === 'spam' ? 'ham' : 'spam')}
                   >
-                    Report as {result.label === 'spam' ? 'Ham' : 'Spam'}
+                    Report as {result.label === 'spam' ? 'Ham' : 'Spam'} & Retrain
                   </button>
                 </div>
               ) : (
                 <div className="feedback-area" style={{ color: '#10b981' }}>
-                  ✓ Feedback submitted. Thank you!
+                  ✓ Feedback integrated into the model.
                 </div>
               )}
             </div>
@@ -165,7 +210,7 @@ function App() {
       )}
 
       {activeTab === 'dashboard' && (
-        <div className="glass-card dashboard">
+        <div className="glass-card dashboard fade-in">
           <div className="stat-box">
             <div className="stat-label">Total Processed</div>
             <div className="stat-value">
@@ -192,6 +237,58 @@ function App() {
                 : 'N/A'}
             </div>
           </div>
+          
+          {stats && (stats.counts?.spam > 0 || stats.counts?.ham > 0) && (
+            <div className="chart-container">
+              <label>Spam vs Ham Ratio</label>
+              <div className="chart-bar">
+                <div 
+                  className="chart-spam" 
+                  style={{ width: `${(stats.counts?.spam || 0) / ((stats.counts?.spam || 0) + (stats.counts?.ham || 0)) * 100}%` }}
+                >
+                  {(stats.counts?.spam || 0) > 0 && 'Spam'}
+                </div>
+                <div 
+                  className="chart-ham" 
+                  style={{ width: `${(stats.counts?.ham || 0) / ((stats.counts?.spam || 0) + (stats.counts?.ham || 0)) * 100}%` }}
+                >
+                  {(stats.counts?.ham || 0) > 0 && 'Ham'}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'history' && (
+        <div className="glass-card history-container fade-in">
+          <h2>Recent Analyses</h2>
+          {history.length === 0 ? (
+            <p className="empty-state">No recent activity found.</p>
+          ) : (
+            <div className="history-list">
+              {history.map(item => (
+                <div key={item.id} className="history-item">
+                  <div className="history-header">
+                    <span className="history-type">{item.type.toUpperCase()}</span>
+                    <span className="history-date">{new Date(item.timestamp).toLocaleString()}</span>
+                  </div>
+                  <div className="history-text">"{item.text.length > 80 ? item.text.substring(0,80) + '...' : item.text}"</div>
+                  <div className="history-footer">
+                    Prediction: 
+                    <span className={`badge ${item.prediction === 'spam' ? 'spam-badge' : 'ham-badge'}`}>
+                      {item.prediction.toUpperCase()}
+                    </span>
+                    {item.user_correction && (
+                      <span className="correction-badge">
+                        → Corrected to {item.user_correction.toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
