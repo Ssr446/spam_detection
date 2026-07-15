@@ -30,7 +30,12 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type, text })
       });
-      const data = await res.json();
+      let data;
+      try {
+        data = await res.json();
+      } catch (e) {
+        throw new Error(res.status === 404 ? "Server is starting up or unreachable. Please try again." : "Invalid response from server.");
+      }
       if (data.error) throw new Error(data.error);
       setResult(data);
     } catch (err) {
