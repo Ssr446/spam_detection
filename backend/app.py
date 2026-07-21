@@ -12,7 +12,8 @@ from datetime import datetime
 import ml_pipeline
 from train_model import train
 
-app = Flask(__name__, static_folder='static')
+STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
+app = Flask(__name__, static_folder=STATIC_DIR)
 CORS(app)
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
@@ -340,10 +341,15 @@ def export_history():
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve(path):
-    if path != "" and os.path.exists(app.static_folder + '/' + path):
-        return send_from_directory(app.static_folder, path)
-    else:
-        return send_from_directory(app.static_folder, 'index.html')
+    # Never catch API routes
+    if path.startswith('api/'):
+        return jsonify({'error': 'Not found'}), 404
+    # Serve the file if it exists in the static folder
+    file_path = os.path.join(STATIC_DIR, path)
+    if path and os.path.isfile(file_path):
+        return send_from_directory(STATIC_DIR, path)
+    # Fall back to index.html for SPA routing
+    return send_from_directory(STATIC_DIR, 'index.html')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
