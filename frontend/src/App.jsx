@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 
-// Use environment variable if set (for split deploy), otherwise fallback to same origin (for single deploy)
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 function App() {
-  const [activeTab, setActiveTab] = useState('classify'); // 'classify', 'dashboard', 'history'
+  const [activeTab, setActiveTab] = useState('classify'); // 'classify', 'dashboard', 'history', 'bulk'
   
   // Classify State
   const [text, setText] = useState('');
@@ -12,6 +11,10 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [analysisStage, setAnalysisStage] = useState('');
   const [result, setResult] = useState(null);
+  
+  // Bulk State
+  const [file, setFile] = useState(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
   
   // Toast State
   const [toast, setToast] = useState(null);
@@ -38,10 +41,9 @@ function App() {
     setAnalysisStage('Extracting features...');
     
     try {
-      // Simulate dynamic loading steps for UX
-      await delay(600);
+      await delay(400);
       setAnalysisStage('Running Logistic Regression...');
-      await delay(600);
+      await delay(400);
       setAnalysisStage('Finalizing results...');
       
       const res = await fetch(`${API_BASE}/api/classify`, {
@@ -65,6 +67,46 @@ function App() {
     }
   };
 
+  const handleBulkUpload = async (e) => {
+    e.preventDefault();
+    if (!file) return;
+    
+    setBulkLoading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/bulk_classify`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Upload failed');
+      }
+      
+      // Handle file download
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'bulk_results.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      
+      showToast("Bulk analysis complete! File downloaded.");
+      setFile(null);
+      // reset file input visually
+      document.getElementById('file-upload').value = '';
+    } catch (err) {
+      alert("Error: " + err.message);
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
   const handleFeedback = async (correction) => {
     if (!result || !result.id) return;
     try {
@@ -75,7 +117,7 @@ function App() {
       });
       if (res.ok) {
         setResult({...result, reported: true});
-        showToast("Feedback submitted! Model has been retrained instantly.");
+        showToast("Feedback submitted! Model retrained.");
       }
     } catch (err) {
       console.error(err);
@@ -94,54 +136,41 @@ function App() {
 
   const fetchHistory = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/history?per_page=10`);
+      const res = await fetch(`${API_BASE}/api/history?per_page=15`);
       const data = await res.json();
       setHistory(data.items);
     } catch (err) {
       console.error("Failed to fetch history", err);
     }
   };
+  
+  const handleExport = () => {
+    window.location.href = `${API_BASE}/api/export`;
+  };
 
   useEffect(() => {
-    if (activeTab === 'dashboard') {
-      fetchStats();
-    } else if (activeTab === 'history') {
-      fetchHistory();
-    }
+    if (activeTab === 'dashboard') fetchStats();
+    else if (activeTab === 'history') fetchHistory();
   }, [activeTab]);
 
   return (
     <div className="app-container">
-      {toast && <div className="toast fade-in-out">{toast}</div>}
+      {toast && <div className="toast">{toast}</div>}
       
       <header>
-        <h1>SpamGuard AI</h1>
-        <p>Advanced cross-channel spam detection</p>
+        <h1>SpamGuard AI Enterprise</h1>
+        <p>Production-grade spam classification and analysis platform</p>
       </header>
 
       <div className="tabs">
-        <button 
-          className={`tab ${activeTab === 'classify' ? 'active' : ''}`}
-          onClick={() => setActiveTab('classify')}
-        >
-          Detector
-        </button>
-        <button 
-          className={`tab ${activeTab === 'dashboard' ? 'active' : ''}`}
-          onClick={() => setActiveTab('dashboard')}
-        >
-          Dashboard
-        </button>
-        <button 
-          className={`tab ${activeTab === 'history' ? 'active' : ''}`}
-          onClick={() => setActiveTab('history')}
-        >
-          History
-        </button>
+        <button className={`tab ${activeTab === 'classify' ? 'active' : ''}`} onClick={() => setActiveTab('classify')}>Detector</button>
+        <button className={`tab ${activeTab === 'bulk' ? 'active' : ''}`} onClick={() => setActiveTab('bulk')}>Bulk Analysis</button>
+        <button className={`tab ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>Dashboard</button>
+        <button className={`tab ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>History</button>
       </div>
 
       {activeTab === 'classify' && (
-        <div className="glass-card fade-in">
+        <div className="glass-card">
           <form onSubmit={handleClassify}>
             <div className="form-group">
               <label>Message Channel</label>
@@ -155,7 +184,7 @@ function App() {
             <div className="form-group">
               <label>Message Content</label>
               <textarea 
-                placeholder="Paste the message here..."
+                placeholder="Paste the message text here for analysis..."
                 value={text}
                 onChange={(e) => setText(e.target.value)}
               />
@@ -171,37 +200,51 @@ function App() {
           </form>
 
           {result && (
-            <div className="result-section slide-up">
-              <div className={`result-badge ${result.label.toLowerCase()}`}>
-                {result.label.toUpperCase()}
-              </div>
-              
-              <div>
-                <label>Confidence Score: {(result.confidence * 100).toFixed(1)}%</label>
-                <div className="confidence-bar-bg">
-                  <div 
-                    className="confidence-bar-fill" 
-                    style={{ 
-                      width: `${result.confidence * 100}%`,
-                      background: result.label === 'spam' ? '#ef4444' : '#10b981'
-                    }}
-                  ></div>
+            <div className="result-section">
+              <div className="flex-between">
+                <div className={`result-badge ${result.label.toLowerCase()}`}>
+                  {result.label.toUpperCase()}
+                </div>
+                <div style={{fontWeight: 600}}>
+                  Confidence: {(result.confidence * 100).toFixed(1)}%
                 </div>
               </div>
+              
+              <div className="confidence-bar-bg">
+                <div 
+                  className="confidence-bar-fill" 
+                  style={{ 
+                    width: `${result.confidence * 100}%`,
+                    background: result.label === 'spam' ? '#dc2626' : '#16a34a'
+                  }}
+                ></div>
+              </div>
+
+              {result.highlight_words && result.highlight_words.length > 0 && (
+                <div className="mt-4">
+                  <label>Explainability: Key Factors</label>
+                  <p className="explanation-text">The model flagged the following words as highly indicative of {result.label}:</p>
+                  <div className="highlighted-sentence">
+                    {result.highlight_words.map(w => (
+                      <span key={w} className="highlight-word">{w}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {!result.reported ? (
                 <div className="feedback-area">
-                  <span>Is this wrong?</span>
+                  <span style={{fontSize: '0.875rem', fontWeight: 500}}>Is this classification incorrect?</span>
                   <button 
                     className="btn-secondary"
                     onClick={() => handleFeedback(result.label === 'spam' ? 'ham' : 'spam')}
                   >
-                    Report as {result.label === 'spam' ? 'Ham' : 'Spam'} & Retrain
+                    Report as {result.label === 'spam' ? 'Ham' : 'Spam'} & Retrain Model
                   </button>
                 </div>
               ) : (
-                <div className="feedback-area" style={{ color: '#10b981' }}>
-                  ✓ Feedback integrated into the model.
+                <div className="feedback-area" style={{ color: '#16a34a', fontWeight: 500, fontSize: '0.9rem' }}>
+                  ✓ Feedback integrated. The model has been retrained.
                 </div>
               )}
             </div>
@@ -209,50 +252,90 @@ function App() {
         </div>
       )}
 
+      {activeTab === 'bulk' && (
+        <div className="glass-card">
+          <h2 style={{marginBottom: '1rem', fontSize: '1.25rem'}}>Bulk CSV Analysis</h2>
+          <p style={{color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem'}}>
+            Upload a CSV file containing messages. The system will automatically detect the text column, process all rows, and return a downloadable CSV with the predictions appended.
+          </p>
+          <form onSubmit={handleBulkUpload}>
+            <div className="form-group">
+              <label>Select CSV File</label>
+              <input 
+                id="file-upload"
+                type="file" 
+                accept=".csv" 
+                onChange={(e) => setFile(e.target.files[0])}
+              />
+            </div>
+            <button type="submit" disabled={bulkLoading || !file}>
+              {bulkLoading ? (
+                <div className="loading-state">
+                  <span className="spinner"></span> Processing File...
+                </div>
+              ) : 'Upload and Analyze'}
+            </button>
+          </form>
+        </div>
+      )}
+
       {activeTab === 'dashboard' && (
-        <div className="glass-card dashboard fade-in">
-          <div className="stat-box">
-            <div className="stat-label">Total Processed</div>
-            <div className="stat-value">
-              {stats ? (stats.counts?.spam || 0) + (stats.counts?.ham || 0) : '...'}
-            </div>
+        <div className="glass-card">
+          <div className="flex-between mb-4">
+            <h2 style={{fontSize: '1.25rem'}}>System Metrics</h2>
+            <button className="btn-secondary" onClick={handleExport}>
+              Export Data (CSV)
+            </button>
           </div>
-          <div className="stat-box">
-            <div className="stat-label">Spam Detected</div>
-            <div className="stat-value" style={{ color: '#fca5a5' }}>
-              {stats ? (stats.counts?.spam || 0) : '...'}
+          
+          <div className="dashboard">
+            <div className="stat-box">
+              <div className="stat-label">Total Processed</div>
+              <div className="stat-value">
+                {stats ? (stats.counts?.spam || 0) + (stats.counts?.ham || 0) : '...'}
+              </div>
             </div>
-          </div>
-          <div className="stat-box">
-            <div className="stat-label">User Feedbacks</div>
-            <div className="stat-value">
-              {stats ? stats.feedback_provided : '...'}
+            <div className="stat-box">
+              <div className="stat-label">Spam Detected</div>
+              <div className="stat-value" style={{ color: '#dc2626' }}>
+                {stats ? (stats.counts?.spam || 0) : '...'}
+              </div>
             </div>
-          </div>
-          <div className="stat-box">
-            <div className="stat-label">Est. Accuracy</div>
-            <div className="stat-value" style={{ color: '#6ee7b7' }}>
-              {stats && stats.estimated_accuracy !== null 
-                ? `${(stats.estimated_accuracy * 100).toFixed(1)}%` 
-                : 'N/A'}
+            <div className="stat-box">
+              <div className="stat-label">User Corrections</div>
+              <div className="stat-value">
+                {stats ? stats.feedback_provided : '...'}
+              </div>
+            </div>
+            <div className="stat-box">
+              <div className="stat-label">Est. Accuracy</div>
+              <div className="stat-value" style={{ color: '#16a34a' }}>
+                {stats && stats.estimated_accuracy !== null 
+                  ? `${(stats.estimated_accuracy * 100).toFixed(1)}%` 
+                  : 'N/A'}
+              </div>
             </div>
           </div>
           
           {stats && (stats.counts?.spam > 0 || stats.counts?.ham > 0) && (
-            <div className="chart-container">
-              <label>Spam vs Ham Ratio</label>
-              <div className="chart-bar">
+            <div className="mt-4 pt-4" style={{borderTop: '1px solid var(--border-color)'}}>
+              <label style={{marginBottom: '0.5rem', display: 'block'}}>Spam vs Ham Distribution</label>
+              <div className="chart-bar" style={{display: 'flex', height: '24px', borderRadius: '4px', overflow: 'hidden'}}>
                 <div 
-                  className="chart-spam" 
-                  style={{ width: `${(stats.counts?.spam || 0) / ((stats.counts?.spam || 0) + (stats.counts?.ham || 0)) * 100}%` }}
+                  style={{ 
+                    width: `${(stats.counts?.spam || 0) / ((stats.counts?.spam || 0) + (stats.counts?.ham || 0)) * 100}%`,
+                    background: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.75rem', fontWeight: 600
+                  }}
                 >
-                  {(stats.counts?.spam || 0) > 0 && 'Spam'}
+                  {(stats.counts?.spam || 0) > 0 && 'SPAM'}
                 </div>
                 <div 
-                  className="chart-ham" 
-                  style={{ width: `${(stats.counts?.ham || 0) / ((stats.counts?.spam || 0) + (stats.counts?.ham || 0)) * 100}%` }}
+                  style={{ 
+                    width: `${(stats.counts?.ham || 0) / ((stats.counts?.spam || 0) + (stats.counts?.ham || 0)) * 100}%`,
+                    background: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.75rem', fontWeight: 600
+                  }}
                 >
-                  {(stats.counts?.ham || 0) > 0 && 'Ham'}
+                  {(stats.counts?.ham || 0) > 0 && 'HAM'}
                 </div>
               </div>
             </div>
@@ -261,27 +344,29 @@ function App() {
       )}
 
       {activeTab === 'history' && (
-        <div className="glass-card history-container fade-in">
-          <h2>Recent Analyses</h2>
+        <div className="glass-card history-container">
+          <div className="flex-between mb-4">
+            <h2 style={{fontSize: '1.25rem'}}>Analysis Log</h2>
+          </div>
           {history.length === 0 ? (
-            <p className="empty-state">No recent activity found.</p>
+            <p style={{color: 'var(--text-muted)', padding: '2rem 0', textAlign: 'center'}}>No historical records found.</p>
           ) : (
             <div className="history-list">
               {history.map(item => (
                 <div key={item.id} className="history-item">
                   <div className="history-header">
-                    <span className="history-type">{item.type.toUpperCase()}</span>
-                    <span className="history-date">{new Date(item.timestamp).toLocaleString()}</span>
+                    <span style={{fontWeight: 600, color: 'var(--text-main)'}}>{item.type.toUpperCase()}</span>
+                    <span>{new Date(item.timestamp).toLocaleString()}</span>
                   </div>
-                  <div className="history-text">"{item.text.length > 80 ? item.text.substring(0,80) + '...' : item.text}"</div>
-                  <div className="history-footer">
-                    Prediction: 
+                  <div className="history-text">{item.text.length > 120 ? item.text.substring(0,120) + '...' : item.text}</div>
+                  <div style={{fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                    Result: 
                     <span className={`badge ${item.prediction === 'spam' ? 'spam-badge' : 'ham-badge'}`}>
                       {item.prediction.toUpperCase()}
                     </span>
                     {item.user_correction && (
-                      <span className="correction-badge">
-                        → Corrected to {item.user_correction.toUpperCase()}
+                      <span className="badge correction-badge">
+                        OVERRIDDEN TO {item.user_correction.toUpperCase()}
                       </span>
                     )}
                   </div>
