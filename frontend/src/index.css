@@ -49,8 +49,8 @@ body {
 /* ── Sidebar ── */
 .sidebar {
   width: 240px;
-  background: var(--surface);
-  border-right: 1px solid var(--border);
+  background: #0f172a;
+  border-right: none;
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -62,7 +62,7 @@ body {
 
 .sidebar-brand {
   padding: 20px 20px 16px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 
 .brand-logo {
@@ -87,13 +87,13 @@ body {
 .brand-name {
   font-size: 15px;
   font-weight: 700;
-  color: var(--text);
+  color: #ffffff;
   letter-spacing: -0.3px;
 }
 
 .brand-tagline {
   font-size: 11px;
-  color: var(--text-3);
+  color: rgba(255,255,255,0.4);
   padding-left: 42px;
 }
 
@@ -107,7 +107,7 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.8px;
-  color: var(--text-3);
+  color: rgba(255,255,255,0.3);
   padding: 8px 20px 4px;
 }
 
@@ -118,7 +118,7 @@ body {
   padding: 9px 20px;
   cursor: pointer;
   border-left: 3px solid transparent;
-  color: var(--text-2);
+  color: rgba(255,255,255,0.6);
   font-size: 13.5px;
   font-weight: 500;
   transition: all 0.12s;
@@ -126,13 +126,13 @@ body {
 }
 
 .nav-item:hover {
-  background: var(--surface-2);
-  color: var(--text);
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.9);
 }
 
 .nav-item.active {
-  background: var(--primary-light);
-  color: var(--primary);
+  background: rgba(37,99,235,0.25);
+  color: #93c5fd;
   border-left-color: var(--primary);
 }
 
@@ -140,13 +140,13 @@ body {
 
 .sidebar-footer {
   padding: 16px 20px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid rgba(255,255,255,0.08);
 }
 
 .model-badge {
-  background: var(--success-light);
-  color: var(--success);
-  border: 1px solid var(--success-border);
+  background: rgba(22,163,74,0.2);
+  color: #4ade80;
+  border: 1px solid rgba(22,163,74,0.3);
   border-radius: 20px;
   padding: 4px 10px;
   font-size: 11px;
@@ -159,9 +159,10 @@ body {
 .model-badge::before {
   content: '';
   width: 6px; height: 6px;
-  background: var(--success);
+  background: #4ade80;
   border-radius: 50%;
 }
+
 
 /* ── Main Content ── */
 .main {
