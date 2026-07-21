@@ -4,7 +4,7 @@ import joblib
 import pandas as pd
 import io
 import csv
-from flask import Flask, request, jsonify, send_from_directory, Response
+from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 from datetime import datetime
 
@@ -12,8 +12,7 @@ from datetime import datetime
 import ml_pipeline
 from train_model import train
 
-STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
-app = Flask(__name__, static_folder=STATIC_DIR)
+app = Flask(__name__)
 CORS(app)
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
@@ -337,19 +336,5 @@ def export_history():
         headers={"Content-disposition": "attachment; filename=spamguard_history.csv"}
     )
 
-# Serve React App
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def serve(path):
-    # Never catch API routes
-    if path.startswith('api/'):
-        return jsonify({'error': 'Not found'}), 404
-    # Serve the file if it exists in the static folder
-    file_path = os.path.join(STATIC_DIR, path)
-    if path and os.path.isfile(file_path):
-        return send_from_directory(STATIC_DIR, path)
-    # Fall back to index.html for SPA routing
-    return send_from_directory(STATIC_DIR, 'index.html')
-
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5001, debug=True)
