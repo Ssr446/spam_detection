@@ -4,6 +4,12 @@
 
 A multi-platform Spam Detection System with an ML backend (Flask, Scikit-learn, NLTK) and a modern, beautiful frontend (React, Vite). It classifies messages as 'spam' or 'ham' across SMS, Email, and Call Transcripts.
 
+## About This Project
+SpamGuard AI is a full-stack application designed to showcase modern machine learning integration within a React architecture. 
+Unlike static ML models, SpamGuard features **Immediate Incremental Learning**. When users correct a misclassification via the UI, the feedback is instantly committed to a SQLite database. The Flask backend immediately extracts this new data, merges it with the original dataset, and dynamically rebuilds the Scikit-Learn `TfidfVectorizer` and `LogisticRegression` pipeline in milliseconds. This allows the model to learn and adapt to edge cases in real-time.
+
+The frontend is built with React and Vite, featuring a sleek, responsive glassmorphism UI with dynamic loading states, visual data charts, and a real-time history feed of past classifications.
+
 ## Features
 - **TF-IDF + Logistic Regression Classifier**: Fast, lightweight, and capable of outputting confidence probabilities.
 - **Flask REST API**: Handles classification, feedback collection, and history/stats aggregation.
