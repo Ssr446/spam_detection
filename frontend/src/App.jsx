@@ -109,73 +109,66 @@ export default function App() {
   ];
 
   const pageMeta = {
-    detector:  { title: 'Message Detector',  sub: 'Classify a single message with AI explainability' },
-    bulk:      { title: 'Bulk Analysis',     sub: 'Process an entire CSV file at scale' },
-    dashboard: { title: 'Analytics Dashboard', sub: 'Live model performance and classification stats' },
-    history:   { title: 'Analysis History',  sub: 'Complete log of every past classification' },
+    detector:  { title: 'Message Detector',     sub: 'Classify a single message with AI explainability' },
+    bulk:      { title: 'Bulk Analysis',         sub: 'Process an entire CSV file at scale' },
+    dashboard: { title: 'Analytics Dashboard',   sub: 'Live model performance and classification stats' },
+    history:   { title: 'Analysis History',      sub: 'Complete log of every past classification' },
   };
 
   return (
-    <div className="layout">
-      {/* ── Sidebar ── */}
-      <aside className="sidebar">
-        <div className="sidebar-brand">
-          <div className="brand-logo">
-            <div className="brand-icon">
-              <Icons.Shield />
-            </div>
-            <div className="brand-text">
-              <div className="brand-name">SpamGuard AI</div>
-              <div className="brand-tagline">Enterprise Platform</div>
-            </div>
+    <div>
+      {/* ── Top Navbar ── */}
+      <nav className="navbar">
+        <div className="navbar-brand">
+          <div className="brand-icon">
+            <Icons.Shield />
           </div>
+          <span className="brand-name">SpamGuard<span className="brand-dot">.</span>AI</span>
         </div>
 
-        <nav className="sidebar-nav">
-          <div className="nav-section-label">Navigation</div>
+        <div className="navbar-nav">
           {navItems.map(({ id, Icon, label }) => (
             <div
               key={id}
-              className={`nav-item${tab === id ? ' active' : ''}`}
+              className={`nav-link${tab === id ? ' active' : ''}`}
               onClick={() => setTab(id)}
             >
               <span className="nav-icon"><Icon /></span>
               <span className="nav-label">{label}</span>
             </div>
           ))}
-        </nav>
+        </div>
 
-        <div className="sidebar-footer">
+        <div className="navbar-right">
           <div className="status-pill">
             <span className="status-dot" />
-            <span className="status-text">Model Active</span>
+            Model Active
           </div>
         </div>
-      </aside>
+      </nav>
 
-      {/* ── Main ── */}
-      <div className="main">
-        <div className="topbar">
-          <div>
-            <div className="page-title">{pageMeta[tab].title}</div>
-            <div className="page-subtitle">{pageMeta[tab].sub}</div>
-          </div>
-          <div className="topbar-right">
-            {tab === 'dashboard' && (
-              <button className="btn btn-secondary btn-sm" onClick={() => { window.location.href = `${API_BASE}/api/export`; }}>
-                <span style={{width:13,height:13,display:'flex'}}><Icons.Download /></span>
-                Export CSV
-              </button>
-            )}
-          </div>
+      {/* ── Page Header ── */}
+      <div className="page-header">
+        <div>
+          <div className="page-title">{pageMeta[tab].title}</div>
+          <div className="page-subtitle">{pageMeta[tab].sub}</div>
         </div>
+        <div className="page-actions">
+          {tab === 'dashboard' && (
+            <button className="btn btn-secondary btn-sm" onClick={() => { window.location.href = `${API_BASE}/api/export`; }}>
+              <span style={{width:13,height:13,display:'flex'}}><Icons.Download /></span>
+              Export CSV
+            </button>
+          )}
+        </div>
+      </div>
 
-        <div className="content">
-          {tab === 'detector'  && <DetectorTab  showToast={showToast} />}
-          {tab === 'bulk'      && <BulkTab      showToast={showToast} />}
-          {tab === 'dashboard' && <DashboardTab />}
-          {tab === 'history'   && <HistoryTab   showToast={showToast} />}
-        </div>
+      {/* ── Content ── */}
+      <div className="content">
+        {tab === 'detector'  && <DetectorTab  showToast={showToast} />}
+        {tab === 'bulk'      && <BulkTab      showToast={showToast} />}
+        {tab === 'dashboard' && <DashboardTab />}
+        {tab === 'history'   && <HistoryTab   showToast={showToast} />}
       </div>
 
       {toast && <div className="toast"><span style={{width:14,height:14,display:'flex'}}><Icons.Check /></span> {toast}</div>}
